@@ -3,13 +3,17 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use tokio::sync::watch;
 use tokio_stream::wrappers::UnixListenerStream;
 use tokio_stream::{Stream, StreamExt};
 use tonic::transport::{Endpoint, Server};
 use tonic::{Request, Response, Status};
+
+/// Maximum time to wait for an existing endpoint to answer a probe before
+/// treating it as live (and refusing to steal its socket).
+const STALE_SOCKET_PROBE_TIMEOUT: Duration = Duration::from_secs(1);
 
 use mblink_proto::mblink::link::v1::{
     ConfigEntry as ProtoConfigEntry, GetConfigRequest, GetConfigResponse, ModuleInfo,
@@ -111,20 +115,42 @@ fn build_status_response(modules: &[ModuleDescriptor]) -> StatusResponse {
 /// Serve the gRPC control service on a Unix domain socket.
 ///
 /// If `path` already exists, the function probes whether another daemon is
-/// listening.  A live daemon causes an immediate `already running` error.  A
-/// stale socket or plain file is removed before binding.
+/// listening.  A live daemon (or an endpoint that accepts but does not answer
+/// within the probe timeout) causes an `already running` error without
+/// removing the path.  A provably stale endpoint (connect refused, not a
+/// socket, or an immediate RPC error) is removed before binding.
 pub async fn serve_uds(
     state: Arc<DaemonState>,
     path: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if path.exists() {
-        // Probe for a live daemon.
-        if let Ok(mut client) = connect_uds(path.clone()).await
-            && client.status(StatusRequest {}).await.is_ok()
-        {
-            return Err(format!("already running ({})", path.display()).into());
+        let already_running = || -> Box<dyn std::error::Error + Send + Sync> {
+            format!("already running ({})", path.display()).into()
+        };
+        match connect_uds(path.clone()).await {
+            Ok(mut client) => {
+                match tokio::time::timeout(
+                    STALE_SOCKET_PROBE_TIMEOUT,
+                    client.status(StatusRequest {}),
+                )
+                .await
+                {
+                    Ok(Ok(_)) => return Err(already_running()),
+                    Ok(Err(_)) => {
+                        // Immediate RPC error: endpoint spoke but is not a live
+                        // mblinkd; treat as stale.
+                    }
+                    Err(_elapsed) => {
+                        // Accepts but never answers: treat as live and do not
+                        // steal the socket.
+                        return Err(already_running());
+                    }
+                }
+            }
+            Err(_) => {
+                // Connect refused / not a socket: treat as stale.
+            }
         }
-        // Not live: remove stale socket / plain file.
         tokio::fs::remove_file(&path).await?;
     }
 
@@ -200,6 +226,12 @@ impl ControlTrait for ControlService {
     ) -> Result<Response<GetConfigResponse>, Status> {
         let module = request.into_inner().module;
         validate_module(&module)?;
+        // Hold the shared write lock across the cache check, load, and cache
+        // fill so a concurrent SetConfig (which saves to disk then updates the
+        // cache under the same lock) cannot have its newer cache overwritten by
+        // a get_config that loaded an older disk snapshot. The section is purely
+        // synchronous, so holding a sync mutex here is safe.
+        let _guard = self.state.lock_config_write();
         if let Some(cached) = self.state.cached_config(&module) {
             return Ok(Response::new(GetConfigResponse {
                 map: Some(cached.into()),

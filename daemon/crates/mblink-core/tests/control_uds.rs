@@ -1,8 +1,11 @@
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use mblink_core::config::ConfigStore;
-use mblink_core::control::{DaemonState, ModuleDescriptor, VERSION, connect_uds, serve_uds};
+use mblink_core::control::{
+    ControlService, DaemonState, ModuleDescriptor, VERSION, connect_uds, serve_uds,
+};
+use mblink_proto::mblink::link::v1::control_server::Control;
 use mblink_proto::mblink::link::v1::{
     ConfigEntry, GetConfigRequest, SetConfigRequest, StatusRequest, WatchStatusRequest,
 };
@@ -298,4 +301,127 @@ async fn concurrent_set_config_serializes_lww() {
 
     server_handle.abort();
     let _ = server_handle.await;
+}
+
+#[tokio::test]
+async fn serve_uds_rejects_hung_endpoint_without_stealing_socket() {
+    let config_root = tempfile::tempdir().unwrap();
+    let socket_dir = tempfile::tempdir().unwrap();
+    let socket_path = socket_dir.path().join("hung.sock");
+
+    // Bind a listener that accepts connections but never speaks HTTP/2.
+    let listener = tokio::net::UnixListener::bind(&socket_path).unwrap();
+    let hanger = tokio::spawn(async move {
+        loop {
+            if let Ok((stream, _)) = listener.accept().await {
+                // Hold the connection open without responding.
+                tokio::spawn(async move {
+                    let _keep = stream;
+                    std::future::pending::<()>().await;
+                });
+            }
+        }
+    });
+
+    let state = Arc::new(DaemonState::new(
+        vec![ModuleDescriptor {
+            name: "notisync".to_string(),
+            status_line: "stub".to_string(),
+        }],
+        ConfigStore::new(config_root.path()),
+    ));
+
+    let start = Instant::now();
+    let result = serve_uds(state, socket_path.clone()).await;
+    let elapsed = start.elapsed();
+
+    assert!(
+        elapsed < Duration::from_secs(4),
+        "probe hung for {:?}; expected bounded timeout",
+        elapsed
+    );
+    let err = result.expect_err("hung endpoint must be treated as live");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("already running"),
+        "expected 'already running' in error, got: {msg}"
+    );
+    assert!(
+        socket_path.exists(),
+        "hung endpoint socket must not be removed or replaced"
+    );
+
+    hanger.abort();
+    let _ = hanger.await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn get_config_never_regresses_cache_after_completed_set() {
+    // A get_config that misses the cache loads from disk and fills the cache
+    // without coordination, so it can overwrite a newer cache written by a
+    // concurrent set_config. Each iteration uses a fresh state (cache miss) and
+    // races several gets against one set; a verifying get after the set
+    // completes must never observe the pre-set state.
+    for trial in 0..80 {
+        let root = tempfile::tempdir().unwrap();
+        let state = Arc::new(DaemonState::new(vec![], ConfigStore::new(root.path())));
+        let svc = Arc::new(ControlService::new(Arc::clone(&state)));
+        let module = "notisync".to_string();
+        let package = format!("pkg{trial}");
+        let ts = 1_000 + trial as u64;
+
+        let mut handles = Vec::new();
+        for _ in 0..6 {
+            let s = Arc::clone(&svc);
+            let m = module.clone();
+            handles.push(tokio::spawn(async move {
+                let _ = Control::get_config(
+                    s.as_ref(),
+                    tonic::Request::new(GetConfigRequest { module: m }),
+                )
+                .await;
+            }));
+        }
+        let set_svc = Arc::clone(&svc);
+        let set_module = module.clone();
+        let set_pkg = package.clone();
+        let set_handle = tokio::spawn(async move {
+            Control::set_config(
+                set_svc.as_ref(),
+                tonic::Request::new(SetConfigRequest {
+                    module: set_module,
+                    updates: vec![ConfigEntry {
+                        package: set_pkg,
+                        enabled: true,
+                        updated_at: ts,
+                        updated_by: "linux".to_string(),
+                    }],
+                }),
+            )
+            .await
+            .unwrap();
+        });
+        set_handle.await.unwrap();
+        for h in handles {
+            let _ = h.await;
+        }
+
+        let got = Control::get_config(
+            svc.as_ref(),
+            tonic::Request::new(GetConfigRequest { module }),
+        )
+        .await
+        .unwrap()
+        .into_inner();
+        let entry = got
+            .map
+            .unwrap()
+            .entries
+            .into_iter()
+            .find(|e| e.package == package);
+        assert!(
+            entry.is_some_and(|e| e.enabled && e.updated_at == ts),
+            "get after completed set returned pre-set state (cache regression)"
+        );
+    }
 }
