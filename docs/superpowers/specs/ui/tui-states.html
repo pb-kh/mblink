@@ -1,0 +1,43 @@
+<h2>mblink TUI v6 — one permission model, footer fixed</h2>
+<p class="subtitle">Footer convention everywhere: status line (link · config sync · mblinkd) sits <b>above</b> the hotkeys line. Module toggle = synced config, editable from either side; missing consent = a setup state shown identically in both apps.</p>
+
+<div class="section">
+  <div class="label">Module screen — three toggle states</div>
+  <pre style="background:#1a1a2e;padding:12px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.35">
+ active                                  off
+┌ mblink › notisync ─────────┐  ┌ mblink › notisync ────────┐
+│ State   ● active           │  │ State   ○ off             │
+│────────────────────────────│  │───────────────────────────│
+│ Config sections            │  │ Config sections           │
+│  &gt; apps    6/14 · ✓ 18:02  │  │  &gt; apps    6/14 ticked   │
+│────────────────────────────│  │───────────────────────────│
+│ config ✓ 18:02 · mblinkd ●│  │ config ✓ 18:02 · mblinkd ●│
+│ space on/off · ⏎ · esc · q │  │ space on/off · ⏎ · esc · q│
+└────────────────────────────┘  └───────────────────────────┘
+
+ setup needed (one-time consent grant pending)
+┌ mblink › notisync ───────────────────────────────┐
+│ State   ⚠ waiting for notification access       │
+│         one-time grant on the phone activates it │
+│─────────────────────────────────────────────────│
+│ Config sections                                 │
+│  &gt; apps      6/14 ticked                        │
+│─────────────────────────────────────────────────│
+│ config ✓ 18:02 · mblinkd ● up                   │
+│ space on/off · ⏎ enter · esc · q                │
+└──────────────────────────────────────────────────┘</pre>
+  <p class="subtitle">The toggle always works from here and syncs like any tick. Missing consent just holds the ⚠ state — visible in both apps, worded the same — until the grant happens on the phone.</p>
+</div>
+
+<div class="section">
+  <div class="label">Same state on Android — identical wording</div>
+  <pre style="background:#1a1a2e;padding:12px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.35">
+┌ notisync ────────────────────────────────────────┐
+│  State    ⚠ waiting for notification access      │
+│           [ Grant access ]  ← opens Android      │
+│                               settings, once     │
+│  Apps     6/14 ticked                           │
+└──────────────────────────────────────────────────┘</pre>
+</div>
+
+<p class="subtitle">Sync indicators: Office-style default confirmed — row marks (↻ in flight, · queued offline) only while unacknowledged, footer flash on settle. TUI is settled unless you have more.</p>

@@ -1,0 +1,32 @@
+<h2>mblink TUI — notisync with a single config section</h2>
+<p class="subtitle">Your corrections: notisync has one config section only — "apps". On app rows: Space toggles the tick, Enter fires $EDITOR on that app's Lua handler. The separate "handlers" section is gone.</p>
+
+<div class="section">
+  <div class="label">Home (unchanged)</div>
+  <pre style="background:#1a1a2e;padding:12px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.35">
+┌ mblink ─── ● pixel-8 · mblinkd up · ✓ 18:02 ──────┐
+│                                                   │
+│  Modules                                          │
+│   [x] notisync              12/16 apps            │
+│                                                   │
+│──────────────────────────────────────────────────│
+│  space on/off · ⏎ open · q quit                   │
+└──────────────────────────────────────────────────┘</pre>
+</div>
+
+<div class="section">
+  <div class="label">notisync — one section, apps are the rows</div>
+  <pre style="background:#1a1a2e;padding:12px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.35">
+┌ mblink › notisync ─── ● pixel-8 · mblinkd up · ↻ syncing ─┐
+│  ● active · 12/16 apps                            │
+│──────────────────────────────────────────────────│
+│  apps                                             │
+│   [x] Telegram      org.telegram.messenger   ✎   │
+│   [x] Signal        org.thoughtcrime.sec…         │
+│   [ ] Gmail         com.google.android.gm         │
+│   [x] System · USB  android                       │
+│──────────────────────────────────────────────────│
+│  space toggle · ⏎ edit handler · esc back · q     │
+└──────────────────────────────────────────────────┘</pre>
+  <p class="subtitle">⏎ on a row = $EDITOR handlers/&lt;package&gt;.lua, yazi-style suspend/restore (creates a commented Lua template if none exists). The dim ✎ marks rows that already have a handler — my small addition, strike it if you don't want it. ↻ still only appears while a tick is in flight. A module with more config sections later just adds more labeled groups on this same page.</p>
+</div>

@@ -1,0 +1,51 @@
+<h2>mblink Android v3 — two tabs, bottom-anchored actions</h2>
+<p class="subtitle">Bottom nav with two tabs: Home, Modules. Titles + statuses own the top; actionable cards anchor to the bottom edge (above the nav bar) and grow upward — empty space lives in the middle, not below the content.</p>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin:16px 0">
+
+  <div style="width:250px;border:1px solid #444;border-radius:18px;padding:12px;background:#111;font-size:12px;line-height:1.5;display:flex;flex-direction:column;min-height:340px">
+    <div style="font-weight:bold">mblink <span style="float:right;color:#888">⚙</span></div>
+    <div style="color:#7fbf7f">● laptop · ✓ synced 18:02</div>
+    <div style="color:#888;font-size:10px;margin-top:4px">Wi-Fi · 192.168.1.42 · proto v1</div>
+    <div style="margin-top:auto">
+      <div style="border:1px solid #333;border-radius:10px;padding:10px">
+        <b>pixel-8</b> <span style="color:#888">· paired</span><br>
+        <span style="color:#888;font-size:10px">keys pinned · 21 sessions</span>
+      </div>
+    </div>
+    <div style="border-top:1px solid #333;margin-top:10px;padding-top:6px;color:#7fbf7f;text-align:center">⌂ Home&nbsp;&nbsp;&nbsp;▤ Modules</div>
+  </div>
+
+  <div style="width:250px;border:1px solid #444;border-radius:18px;padding:12px;background:#111;font-size:12px;line-height:1.5;display:flex;flex-direction:column;min-height:340px">
+    <div style="font-weight:bold">Modules</div>
+    <div style="color:#7fbf7f">✓ synced 18:02</div>
+    <div style="margin-top:auto">
+      <div style="border:1px solid #333;border-radius:10px;padding:10px">
+        <b>notisync</b> <span style="float:right;color:#7fbf7f">◉</span><br>
+        <span style="color:#888">12/16 apps</span>
+      </div>
+      <div style="border:1px solid #333;border-radius:10px;padding:10px;margin-top:8px;opacity:.45">
+        <b>remotectl</b> <span style="float:right;color:#888">○</span><br>
+        <span style="color:#888">future module</span>
+      </div>
+    </div>
+    <div style="border-top:1px solid #333;margin-top:10px;padding-top:6px;color:#888;text-align:center">⌂ Home&nbsp;&nbsp;&nbsp;<span style="color:#7fbf7f">▤ Modules</span></div>
+  </div>
+
+  <div style="width:250px;border:1px solid #444;border-radius:18px;padding:12px;background:#111;font-size:12px;line-height:1.5;display:flex;flex-direction:column;min-height:340px">
+    <div style="font-weight:bold">‹ notisync</div>
+    <div style="color:#7fbf7f">● active · 12/16 apps</div>
+    <div style="margin-top:auto">
+      <div style="border:1px solid #333;border-radius:10px;padding:10px">
+        <div>Telegram <span style="float:right;color:#7fbf7f">◉ <span style="color:#e0b050">↻</span></span></div>
+        <div style="margin-top:6px">Signal <span style="float:right;color:#7fbf7f">◉</span></div>
+        <div style="margin-top:6px">Gmail <span style="float:right;color:#666">○</span></div>
+        <div style="margin-top:6px">System · USB <span style="float:right;color:#7fbf7f">◉</span></div>
+      </div>
+    </div>
+    <div style="color:#888;font-size:10px;text-align:center;margin-top:8px">(pushed screen — no bottom nav)</div>
+  </div>
+
+</div>
+
+<p class="subtitle">Home (left): connection status at top, paired-device card anchored at the bottom — unpaired, that card becomes the Pair action. Modules (middle): cards grow up from the nav bar. Module screen (right): pushed from a card, same anchoring — status top, apps list bottom. Two things to react to: what Home holds (currently connection + paired-device/pair), and whether the pushed module screen should also drop the bottom nav as sketched.</p>

@@ -1,0 +1,44 @@
+<h2>mblink Android — Settings tab + link details</h2>
+<p class="subtitle">Bottom nav becomes three fixed tabs: Home · Modules · Settings. Settings stays thin — module config lives in Modules, link status on Home. Link management (unpair, stats) hides behind a tap on Home's paired card.</p>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin:16px 0">
+
+  <div style="width:250px;border:1px solid #444;border-radius:18px;padding:12px;background:#111;font-size:12px;line-height:1.5;display:flex;flex-direction:column;min-height:340px">
+    <div style="font-weight:bold">Settings</div>
+    <div style="margin-top:auto">
+      <div style="border:1px solid #333;border-radius:10px;padding:10px">
+        <b>Keep link alive</b> <span style="float:right;color:#7fbf7f">◉</span><br>
+        <span style="color:#888;font-size:10px">foreground service — sync while app is closed</span>
+      </div>
+      <div style="border:1px solid #333;border-radius:10px;padding:10px;margin-top:8px">
+        <b>Theme</b> <span style="float:right;color:#888">system ›</span><br>
+        <span style="color:#888;font-size:10px">system · dark · light</span>
+      </div>
+      <div style="border:1px solid #333;border-radius:10px;padding:10px;margin-top:8px">
+        <b>About</b><br>
+        <span style="color:#888;font-size:10px">app 0.1 · daemon 0.1 · proto v1<br>modules: notisync</span>
+      </div>
+    </div>
+    <div style="border-top:1px solid #333;margin-top:10px;padding-top:6px;color:#888;text-align:center">⌂ Home&nbsp;&nbsp;▤ Modules&nbsp;&nbsp;<span style="color:#7fbf7f">⚙ Settings</span></div>
+  </div>
+
+  <div style="width:250px;border:1px solid #444;border-radius:18px;padding:12px;background:#111;font-size:12px;line-height:1.5;display:flex;flex-direction:column;min-height:340px">
+    <div style="font-weight:bold">‹ laptop</div>
+    <div style="color:#7fbf7f">● connected · Wi-Fi</div>
+    <div style="color:#888;font-size:10px;margin-top:4px">192.168.1.30:5266 · proto v1</div>
+    <div style="margin-top:auto">
+      <div style="border:1px solid #333;border-radius:10px;padding:10px">
+        <span style="color:#888;font-size:10px">SESSION</span><br>
+        uptime 2h14m · rtt 12ms<br>
+        reconnects 3 · synced 18:02
+      </div>
+      <div style="border:1px solid #a05050;border-radius:10px;padding:10px;text-align:center;color:#c07070;font-weight:bold;margin-top:8px">
+        ⚠ Unpair
+      </div>
+    </div>
+    <div style="color:#888;font-size:10px;text-align:center;margin-top:8px">(pushed from Home's card — no bottom nav)</div>
+  </div>
+
+</div>
+
+<p class="subtitle">Settings (left): <b>Keep link alive</b> (foreground service on/off — the battery↔latency tradeoff, the only behavioral setting), theme, and About which doubles as a build manifest (which modules this APK was built with — mirrors modules.toml). Link details + Unpair (right) is a pushed screen from tapping Home's paired card — not in Settings, since it's link state, not app preference.</p>

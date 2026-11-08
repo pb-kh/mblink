@@ -1,0 +1,47 @@
+<h2>mblink Android — pairing & first-run</h2>
+<p class="subtitle">The one-time flow. Linux side is the gh-style wizard (`mblink pair`); the phone side starts from the Home tab's bottom card. Same bottom-anchored principle.</p>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin:16px 0">
+
+  <div style="width:250px;border:1px solid #444;border-radius:18px;padding:12px;background:#111;font-size:12px;line-height:1.5;display:flex;flex-direction:column;min-height:340px">
+    <div style="font-weight:bold">mblink</div>
+    <div style="color:#c09040">◌ not connected</div>
+    <div style="color:#888;font-size:10px;margin-top:4px">no paired computer</div>
+    <div style="margin-top:auto">
+      <div style="border:1px solid #7fbf7f;border-radius:10px;padding:12px;text-align:center;color:#7fbf7f;font-weight:bold">
+        ⚔ Pair with computer
+      </div>
+    </div>
+    <div style="border-top:1px solid #333;margin-top:10px;padding-top:6px;color:#7fbf7f;text-align:center">⌂ Home&nbsp;&nbsp;&nbsp;▤ Modules</div>
+  </div>
+
+  <div style="width:250px;border:1px solid #444;border-radius:18px;padding:12px;background:#111;font-size:12px;line-height:1.5;display:flex;flex-direction:column;min-height:340px">
+    <div style="font-weight:bold">‹ Pair</div>
+    <div style="color:#888;margin-top:4px">Run <code>mblink pair</code> on your<br>computer, then enter the code:</div>
+    <div style="margin-top:auto">
+      <div style="border:1px solid #333;border-radius:10px;padding:10px;text-align:center;letter-spacing:8px;font-size:20px">
+        4 5 8 1 9 2
+      </div>
+      <div style="border:1px solid #7fbf7f;border-radius:10px;padding:10px;text-align:center;color:#7fbf7f;font-weight:bold;margin-top:8px">
+        ⏎ Confirm
+      </div>
+    </div>
+    <div style="color:#888;font-size:10px;text-align:center;margin-top:8px">(pushed screen — no bottom nav)</div>
+  </div>
+
+  <div style="width:250px;border:1px solid #444;border-radius:18px;padding:12px;background:#111;font-size:12px;line-height:1.5;display:flex;flex-direction:column;min-height:340px">
+    <div style="font-weight:bold">mblink</div>
+    <div style="color:#7fbf7f">✓ Paired with laptop</div>
+    <div style="color:#888;font-size:10px;margin-top:4px">keys pinned · enable notisync to start</div>
+    <div style="margin-top:auto">
+      <div style="border:1px solid #333;border-radius:10px;padding:10px">
+        <b>laptop</b> <span style="color:#888">· paired</span><br>
+        <span style="color:#888;font-size:10px">waiting for connection…</span>
+      </div>
+    </div>
+    <div style="border-top:1px solid #333;margin-top:10px;padding-top:6px;color:#7fbf7f;text-align:center">⌂ Home&nbsp;&nbsp;&nbsp;▤ Modules</div>
+  </div>
+
+</div>
+
+<p class="subtitle">Unpaired Home (left) → Pair screen: the code entry mirrors the wizard — six digits, Confirm sends; both sides pin keys on success (right). Note the wizard on Linux can also display a QR of the code later — optional polish, not MVP.</p>
