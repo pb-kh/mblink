@@ -1,0 +1,44 @@
+syntax = "proto3";
+package mblink.link.v1;
+
+message ConfigEntry {
+  string package = 1;
+  bool enabled = 2;
+  uint64 updated_at = 3;   // unix epoch millis
+  string updated_by = 4;   // "linux" | "phone"
+}
+
+message ConfigMap { repeated ConfigEntry entries = 1; }
+
+message StatusRequest {}
+message StatusResponse {
+  string version = 1;
+  uint64 uptime_ms = 2;
+  string link_state = 3;   // "disconnected" until the link plan
+  string peer_name = 4;    // empty until paired
+  repeated ModuleInfo modules = 5;
+}
+
+message ModuleInfo { string name = 1; string status_line = 2; }
+
+message ModuleListRequest {}
+message ModuleListResponse { repeated ModuleInfo modules = 1; }
+
+message GetConfigRequest { string module = 1; }
+message GetConfigResponse { ConfigMap map = 1; }
+
+message SetConfigRequest {
+  string module = 1;
+  repeated ConfigEntry updates = 2;
+}
+message SetConfigResponse { ConfigMap merged = 1; }
+
+message WatchStatusRequest {}
+
+service Control {
+  rpc Status(StatusRequest) returns (StatusResponse);
+  rpc ModuleList(ModuleListRequest) returns (ModuleListResponse);
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+  rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
+  rpc WatchStatus(WatchStatusRequest) returns (stream StatusResponse);
+}
