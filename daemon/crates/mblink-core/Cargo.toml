@@ -6,6 +6,11 @@ edition.workspace = true
 [dependencies]
 notify = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+tokio = { workspace = true }
+tokio-stream = { version = "0.1", features = ["sync"] }
+tonic = { workspace = true }
+tower = "0.5"
 toml = { workspace = true }
 mblink-proto = { path = "../mblink-proto" }
 
