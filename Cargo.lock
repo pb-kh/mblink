@@ -496,6 +496,12 @@ version = "0.1.0"
 [[package]]
 name = "mblink-core"
 version = "0.1.0"
+dependencies = [
+ "mblink-proto",
+ "serde",
+ "tempfile",
+ "toml",
+]
 
 [[package]]
 name = "mblink-proto"
