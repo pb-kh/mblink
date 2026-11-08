@@ -1,0 +1,6 @@
+[modules]
+notisync = false   # plan 3 flips this to true
+
+[service]
+systemd = true
+openrc = false

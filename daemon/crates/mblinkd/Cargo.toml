@@ -2,3 +2,9 @@
 name = "mblinkd"
 version.workspace = true
 edition.workspace = true
+
+[features]
+default = ["service-systemd"]
+module-notisync = []
+service-systemd = []
+service-openrc = []
