@@ -8,3 +8,17 @@ default = ["service-systemd"]
 module-notisync = []
 service-systemd = []
 service-openrc = []
+
+[dependencies]
+mblink-core = { path = "../mblink-core" }
+mblink-proto = { path = "../mblink-proto" }
+tokio = { workspace = true }
+tonic = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "json"] }
+tracing-appender = "0.2"
+
+[dev-dependencies]
+tempfile = { workspace = true }
+libc = "0.2"

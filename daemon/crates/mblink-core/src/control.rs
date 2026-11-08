@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use tokio::sync::watch;
@@ -36,6 +37,7 @@ pub struct DaemonState {
     pub modules: Vec<ModuleDescriptor>,
     pub config: ConfigStore,
     pub status_tx: watch::Sender<StatusResponse>,
+    config_cache: Mutex<HashMap<String, ConfigMap>>,
 }
 
 impl DaemonState {
@@ -47,6 +49,7 @@ impl DaemonState {
             modules,
             config,
             status_tx,
+            config_cache: Mutex::new(HashMap::new()),
         }
     }
 
@@ -54,6 +57,19 @@ impl DaemonState {
         let mut response = build_status_response(&self.modules);
         response.uptime_ms = self.started_at.elapsed().as_millis() as u64;
         response
+    }
+
+    /// Return a cached config map, if one has been loaded or merged.
+    pub fn cached_config(&self, module: &str) -> Option<ConfigMap> {
+        self.config_cache.lock().unwrap().get(module).cloned()
+    }
+
+    /// Replace the cached config map for a module.
+    pub fn set_cached_config(&self, module: &str, map: ConfigMap) {
+        self.config_cache
+            .lock()
+            .unwrap()
+            .insert(module.to_string(), map);
     }
 }
 
@@ -171,11 +187,17 @@ impl ControlTrait for ControlService {
     ) -> Result<Response<GetConfigResponse>, Status> {
         let module = request.into_inner().module;
         validate_module(&module)?;
+        if let Some(cached) = self.state.cached_config(&module) {
+            return Ok(Response::new(GetConfigResponse {
+                map: Some(cached.into()),
+            }));
+        }
         let map = self
             .state
             .config
             .load(&module)
             .map_err(|e| Status::internal(e.to_string()))?;
+        self.state.set_cached_config(&module, map.clone());
         Ok(Response::new(GetConfigResponse {
             map: Some(map.into()),
         }))
@@ -203,6 +225,7 @@ impl ControlTrait for ControlService {
             .config
             .save(&request.module, &map)
             .map_err(|e| Status::internal(e.to_string()))?;
+        self.state.set_cached_config(&request.module, map.clone());
         Ok(Response::new(SetConfigResponse {
             merged: Some(map.into()),
         }))
