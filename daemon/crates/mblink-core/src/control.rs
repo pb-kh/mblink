@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
 use tokio::sync::watch;
@@ -38,6 +38,11 @@ pub struct DaemonState {
     pub config: ConfigStore,
     pub status_tx: watch::Sender<StatusResponse>,
     config_cache: Mutex<HashMap<String, ConfigMap>>,
+    /// Serializes every writer of a module's config (control-plane `SetConfig`
+    /// and the watcher reload handler).  Both are read-modify-write cycles
+    /// over the same file and cache; without this lock a save based on a
+    /// pre-write snapshot silently drops the other writer's entries.
+    config_write_lock: Mutex<()>,
 }
 
 impl DaemonState {
@@ -50,6 +55,7 @@ impl DaemonState {
             config,
             status_tx,
             config_cache: Mutex::new(HashMap::new()),
+            config_write_lock: Mutex::new(()),
         }
     }
 
@@ -70,6 +76,19 @@ impl DaemonState {
             .lock()
             .unwrap()
             .insert(module.to_string(), map);
+    }
+
+    /// Acquire the lock serializing all writers of module config files.
+    ///
+    /// The guard must not be held across an `.await` (it is a sync mutex);
+    /// the critical sections it protects are purely synchronous.
+    /// Poison-tolerant on purpose: a panicking writer must not wedge config
+    /// writes for the rest of the daemon's lifetime.
+    pub fn lock_config_write(&self) -> MutexGuard<'_, ()> {
+        match self.config_write_lock.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        }
     }
 }
 
@@ -141,17 +160,11 @@ pub async fn connect_uds(
 
 pub struct ControlService {
     state: Arc<DaemonState>,
-    /// Serializes load → merge → save for SetConfig so concurrent RPCs cannot
-    /// overwrite each other and violate LWW.
-    set_config_lock: tokio::sync::Mutex<()>,
 }
 
 impl ControlService {
     pub fn new(state: Arc<DaemonState>) -> Self {
-        Self {
-            state,
-            set_config_lock: tokio::sync::Mutex::new(()),
-        }
+        Self { state }
     }
 }
 
@@ -210,9 +223,12 @@ impl ControlTrait for ControlService {
         let request = request.into_inner();
         validate_module(&request.module)?;
 
-        // Hold the lock across the entire load → merge → save critical section
-        // so concurrent SetConfig RPCs see each other's writes.
-        let _guard = self.set_config_lock.lock().await;
+        // Hold the shared write lock across the entire load → merge → save
+        // critical section so neither concurrent SetConfig RPCs nor the
+        // watcher reload handler can base a save on a stale snapshot and
+        // silently drop the other writer's entries.  The section is purely
+        // synchronous, so holding a sync mutex here is safe.
+        let _guard = self.state.lock_config_write();
 
         let mut map = self
             .state

@@ -188,6 +188,12 @@ fn run_check(args: &Args) -> ExitCode {
 }
 
 fn handle_config_change(state: &Arc<DaemonState>, module: &str) {
+    // Serialize with control-plane SetConfig writes (and any other writer
+    // holding DaemonState's write lock): both are read-modify-write cycles
+    // over the same config file and cache, and without the lock the later
+    // save silently drops the other side's entries.
+    let _guard = state.lock_config_write();
+
     let current = match state.cached_config(module) {
         Some(map) => map,
         None => match state.config.load(module) {
