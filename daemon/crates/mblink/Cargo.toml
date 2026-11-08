@@ -1,0 +1,4 @@
+[package]
+name = "mblink"
+version.workspace = true
+edition.workspace = true

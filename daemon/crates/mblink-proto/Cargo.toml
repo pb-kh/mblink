@@ -1,0 +1,4 @@
+[package]
+name = "mblink-proto"
+version.workspace = true
+edition.workspace = true
