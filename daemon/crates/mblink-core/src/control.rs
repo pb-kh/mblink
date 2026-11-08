@@ -12,14 +12,14 @@ use tonic::transport::{Endpoint, Server};
 use tonic::{Request, Response, Status};
 
 use mblink_proto::mblink::link::v1::{
+    ConfigEntry as ProtoConfigEntry, GetConfigRequest, GetConfigResponse, ModuleInfo,
+    ModuleListRequest, ModuleListResponse, SetConfigRequest, SetConfigResponse, StatusRequest,
+    StatusResponse, WatchStatusRequest,
     control_client::ControlClient,
     control_server::{Control as ControlTrait, ControlServer},
-    ConfigEntry as ProtoConfigEntry,
-    GetConfigRequest, GetConfigResponse, ModuleInfo, ModuleListRequest, ModuleListResponse,
-    SetConfigRequest, SetConfigResponse, StatusRequest, StatusResponse, WatchStatusRequest,
 };
 
-use crate::config::{merge_lww, ConfigEntry, ConfigMap, ConfigStore};
+use crate::config::{ConfigEntry, ConfigMap, ConfigStore, merge_lww};
 
 /// Daemon version, re-exported from the crate manifest.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -119,10 +119,10 @@ pub async fn serve_uds(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if path.exists() {
         // Probe for a live daemon.
-        if let Ok(mut client) = connect_uds(path.clone()).await {
-            if client.status(StatusRequest {}).await.is_ok() {
-                return Err(format!("already running ({})", path.display()).into());
-            }
+        if let Ok(mut client) = connect_uds(path.clone()).await
+            && client.status(StatusRequest {}).await.is_ok()
+        {
+            return Err(format!("already running ({})", path.display()).into());
         }
         // Not live: remove stale socket / plain file.
         tokio::fs::remove_file(&path).await?;
@@ -267,7 +267,7 @@ fn validate_module(name: &str) -> Result<(), Status> {
         _ => {
             return Err(Status::invalid_argument(
                 "module names must match ^[a-z0-9][a-z0-9-]*$",
-            ))
+            ));
         }
     }
     for c in chars {

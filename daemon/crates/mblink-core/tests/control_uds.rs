@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use mblink_core::config::ConfigStore;
-use mblink_core::control::{connect_uds, serve_uds, DaemonState, ModuleDescriptor, VERSION};
+use mblink_core::control::{DaemonState, ModuleDescriptor, VERSION, connect_uds, serve_uds};
 use mblink_proto::mblink::link::v1::{
     ConfigEntry, GetConfigRequest, SetConfigRequest, StatusRequest, WatchStatusRequest,
 };
@@ -29,7 +29,10 @@ async fn control_uds_roundtrip() {
     let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
     while !socket_path.exists() {
         tokio::time::sleep(Duration::from_millis(10)).await;
-        assert!(tokio::time::Instant::now() < deadline, "server did not start");
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "server did not start"
+        );
     }
 
     let mut client = connect_uds(socket_path.clone()).await.unwrap();
@@ -137,13 +140,15 @@ async fn control_uds_roundtrip() {
     ));
     let live_server_path = live_socket.clone();
     let live_state_for_conflict = Arc::clone(&live_state);
-    let live_handle =
-        tokio::spawn(async move { serve_uds(live_state, live_server_path).await });
+    let live_handle = tokio::spawn(async move { serve_uds(live_state, live_server_path).await });
 
     let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
     while !live_socket.exists() {
         tokio::time::sleep(Duration::from_millis(10)).await;
-        assert!(tokio::time::Instant::now() < deadline, "live server did not start");
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "live server did not start"
+        );
     }
 
     let conflict = serve_uds(live_state_for_conflict, live_socket.clone()).await;
@@ -201,7 +206,10 @@ async fn concurrent_set_config_serializes_lww() {
     let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
     while !socket_path.exists() {
         tokio::time::sleep(Duration::from_millis(10)).await;
-        assert!(tokio::time::Instant::now() < deadline, "server did not start");
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "server did not start"
+        );
     }
 
     let mut client = connect_uds(socket_path.clone()).await.unwrap();
@@ -266,17 +274,24 @@ async fn concurrent_set_config_serializes_lww() {
 
     // No lost updates: every distinct package is present.
     for i in 0..100 {
-        assert!(entries.contains_key(&format!("pkg{}", i)), "missing pkg{}", i);
+        assert!(
+            entries.contains_key(&format!("pkg{}", i)),
+            "missing pkg{}",
+            i
+        );
     }
 
     // LWW is respected for the racing package.
     let racer = entries.get("racer").expect("racer missing");
-    assert!(racer.enabled, "racer should reflect newest update (enabled=true)");
+    assert!(
+        racer.enabled,
+        "racer should reflect newest update (enabled=true)"
+    );
     assert_eq!(racer.updated_at, 300);
 
     // On-disk state matches the API state.
-    let disk = std::fs::read_to_string(config_root.path().join("notisync").join("config.toml"))
-        .unwrap();
+    let disk =
+        std::fs::read_to_string(config_root.path().join("notisync").join("config.toml")).unwrap();
     assert!(disk.contains("[apps.racer]"));
     assert!(disk.contains("enabled = true"));
     assert!(disk.contains("updated_at = 300"));

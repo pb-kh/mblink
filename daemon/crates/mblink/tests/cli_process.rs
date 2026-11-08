@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use mblink_core::config::ConfigStore;
-use mblink_core::control::{serve_uds, DaemonState, ModuleDescriptor};
+use mblink_core::control::{DaemonState, ModuleDescriptor, serve_uds};
 use tokio::net::UnixListener;
 
 fn mblink_bin() -> Command {
@@ -149,11 +149,8 @@ async fn cli_exits_with_clear_error_when_daemon_accepts_but_never_answers() {
     let acceptor = tokio::spawn(async move {
         // Accept and hold connections without speaking HTTP/2.
         let mut held = Vec::new();
-        loop {
-            match listener.accept().await {
-                Ok((stream, _)) => held.push(stream),
-                Err(_) => break,
-            }
+        while let Ok((stream, _)) = listener.accept().await {
+            held.push(stream);
         }
     });
 
@@ -181,10 +178,7 @@ async fn cli_exits_with_clear_error_when_daemon_accepts_but_never_answers() {
         elapsed < Duration::from_secs(9),
         "cli took too long ({elapsed:?}), expected bounded timeout"
     );
-    assert!(
-        !out.status.success(),
-        "cli should fail on a hung socket"
-    );
+    assert!(!out.status.success(), "cli should fail on a hung socket");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains(socket.to_str().unwrap()),

@@ -12,10 +12,7 @@ pub struct ConfigWatcher {
 }
 
 impl ConfigWatcher {
-    pub fn spawn<F: Fn(String) + Send + 'static>(
-        config_root: PathBuf,
-        on_change: F,
-    ) -> Self {
+    pub fn spawn<F: Fn(String) + Send + 'static>(config_root: PathBuf, on_change: F) -> Self {
         let (tx, rx) = mpsc::channel();
 
         let mut watcher = notify::recommended_watcher(move |res: Result<Event, notify::Error>| {
@@ -36,8 +33,7 @@ impl ConfigWatcher {
             let mut deadline: Option<Instant> = None;
 
             loop {
-                let timeout = deadline
-                    .map(|d| d.saturating_duration_since(Instant::now()));
+                let timeout = deadline.map(|d| d.saturating_duration_since(Instant::now()));
 
                 match timeout {
                     Some(t) => match rx.recv_timeout(t) {

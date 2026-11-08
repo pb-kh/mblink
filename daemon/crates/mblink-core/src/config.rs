@@ -6,7 +6,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
-use mblink_proto::mblink::link::v1::{ConfigEntry as ProtoConfigEntry, ConfigMap as ProtoConfigMap};
+use mblink_proto::mblink::link::v1::{
+    ConfigEntry as ProtoConfigEntry, ConfigMap as ProtoConfigMap,
+};
 
 /// A single configuration entry for a package.
 ///
@@ -299,7 +301,7 @@ mod tests {
             },
         );
         merge_lww(&mut base, &incoming);
-        assert_eq!(base.entries["pkg"].enabled, false);
+        assert!(!base.entries["pkg"].enabled);
         assert_eq!(base.entries["pkg"].updated_at, 200);
     }
 
@@ -326,7 +328,7 @@ mod tests {
             },
         );
         merge_lww(&mut base, &incoming);
-        assert_eq!(base.entries["pkg"].enabled, true);
+        assert!(base.entries["pkg"].enabled);
         assert_eq!(base.entries["pkg"].updated_at, 200);
     }
 
@@ -344,7 +346,7 @@ mod tests {
             },
         );
         merge_lww(&mut base, &incoming);
-        assert_eq!(base.entries["pkg"].enabled, true);
+        assert!(base.entries["pkg"].enabled);
         assert_eq!(base.entries["pkg"].updated_by, "phone");
     }
 
@@ -371,7 +373,7 @@ mod tests {
             },
         );
         merge_lww(&mut base, &incoming);
-        assert_eq!(base.entries["pkg"].enabled, false);
+        assert!(!base.entries["pkg"].enabled);
         assert_eq!(base.entries["pkg"].updated_by, "phone");
     }
 
@@ -398,7 +400,7 @@ mod tests {
             },
         );
         merge_lww(&mut base, &incoming);
-        assert_eq!(base.entries["pkg"].enabled, true);
+        assert!(base.entries["pkg"].enabled);
     }
 
     #[test]
@@ -424,7 +426,7 @@ mod tests {
             },
         );
         merge_from_file(&mut current, &file, 600);
-        assert_eq!(current.entries["pkg"].enabled, false);
+        assert!(!current.entries["pkg"].enabled);
         assert_eq!(current.entries["pkg"].updated_at, 600);
         assert_eq!(current.entries["pkg"].updated_by, "linux");
     }

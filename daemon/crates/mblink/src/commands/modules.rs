@@ -3,7 +3,7 @@ use std::path::Path;
 use mblink_proto::mblink::link::v1::ModuleListRequest;
 use tokio::time::timeout;
 
-use crate::{connect_or_exit, CLI_TIMEOUT};
+use crate::{CLI_TIMEOUT, connect_or_exit};
 
 pub async fn run(socket: &Path) {
     let mut client = connect_or_exit(socket).await;
@@ -13,7 +13,7 @@ pub async fn run(socket: &Path) {
         Err(_) => crate::timed_out(socket),
     };
 
-    println!("{:<20} {}", "module", "status");
+    println!("{:<20} status", "module");
     println!("{:-<20} {:-<20}", "", "");
     for m in &resp.modules {
         println!("{:<20} {}", m.name, m.status_line);

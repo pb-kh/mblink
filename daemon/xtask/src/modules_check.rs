@@ -40,10 +40,22 @@ pub fn check(modules_path: &Path, manifest_path: &Path) -> Result<(), Vec<String
     let mut errors = Vec::new();
 
     for (key, &enabled) in &modules.modules {
-        validate(&features, &default, &format!("module-{key}"), enabled, &mut errors);
+        validate(
+            &features,
+            &default,
+            &format!("module-{key}"),
+            enabled,
+            &mut errors,
+        );
     }
     for (key, &enabled) in &modules.service {
-        validate(&features, &default, &format!("service-{key}"), enabled, &mut errors);
+        validate(
+            &features,
+            &default,
+            &format!("service-{key}"),
+            enabled,
+            &mut errors,
+        );
     }
 
     if errors.is_empty() {
@@ -117,7 +129,13 @@ service-systemd = []
 service-openrc = []
 "#,
         );
-        assert!(check(&dir.path().join("modules.toml"), &dir.path().join("Cargo.toml")).is_ok());
+        assert!(
+            check(
+                &dir.path().join("modules.toml"),
+                &dir.path().join("Cargo.toml")
+            )
+            .is_ok()
+        );
     }
 
     #[test]
@@ -139,7 +157,11 @@ foo = true
 default = []
 "#,
         );
-        let err = check(&dir.path().join("modules.toml"), &dir.path().join("Cargo.toml")).unwrap_err();
+        let err = check(
+            &dir.path().join("modules.toml"),
+            &dir.path().join("Cargo.toml"),
+        )
+        .unwrap_err();
         assert!(err.iter().any(|e| e.contains("module-foo")));
     }
 
@@ -163,7 +185,14 @@ default = []
 service-systemd = []
 "#,
         );
-        let err = check(&dir.path().join("modules.toml"), &dir.path().join("Cargo.toml")).unwrap_err();
-        assert!(err.iter().any(|e| e.contains("service-systemd") && e.contains("true")));
+        let err = check(
+            &dir.path().join("modules.toml"),
+            &dir.path().join("Cargo.toml"),
+        )
+        .unwrap_err();
+        assert!(
+            err.iter()
+                .any(|e| e.contains("service-systemd") && e.contains("true"))
+        );
     }
 }

@@ -18,7 +18,10 @@ impl std::fmt::Display for DirsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DirsError::NoRuntimeDir => {
-                write!(f, "XDG_RUNTIME_DIR is not set and no socket override provided")
+                write!(
+                    f,
+                    "XDG_RUNTIME_DIR is not set and no socket override provided"
+                )
             }
         }
     }
@@ -136,7 +139,10 @@ mod tests {
         }
 
         let dirs = MblinkDirs::resolve(None, None, None).unwrap();
-        assert_eq!(dirs.config_root, PathBuf::from("/home/testuser/.config/mblink"));
+        assert_eq!(
+            dirs.config_root,
+            PathBuf::from("/home/testuser/.config/mblink")
+        );
         assert_eq!(
             dirs.state_root,
             PathBuf::from("/home/testuser/.local/state/mblinkd")

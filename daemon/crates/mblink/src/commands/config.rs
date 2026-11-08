@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use mblink_proto::mblink::link::v1::{ConfigEntry, GetConfigRequest, SetConfigRequest};
 use tokio::time::timeout;
 
-use crate::{connect_or_exit, CLI_TIMEOUT};
+use crate::{CLI_TIMEOUT, connect_or_exit};
 
 pub async fn get(socket: &Path, module: &str) {
     let mut client = connect_or_exit(socket).await;
@@ -63,13 +63,10 @@ pub async fn set(socket: &Path, module: &str, package: &str, enabled: bool) {
 
 fn print_entries(entries: &[ConfigEntry]) {
     println!(
-        "{:<40} {:<8} {:<16} {}",
-        "package", "enabled", "updated_at", "updated_by"
+        "{:<40} {:<8} {:<16} updated_by",
+        "package", "enabled", "updated_at"
     );
-    println!(
-        "{:-<40} {:-<8} {:-<16} {:-<10}",
-        "", "", "", ""
-    );
+    println!("{:-<40} {:-<8} {:-<16} {:-<10}", "", "", "", "");
     for e in entries {
         println!(
             "{:<40} {:<8} {:<16} {}",

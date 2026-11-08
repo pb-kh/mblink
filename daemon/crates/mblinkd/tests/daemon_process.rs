@@ -386,7 +386,8 @@ async fn concurrent_set_config_and_hand_edits_lose_no_entries() {
     // Seed + filler entries: the fillers grow the config file so each
     // writer's parse/serialize/fsync section is long enough for the
     // concurrent writer to land inside it.
-    let mut seed = String::from("[apps.\"seed\"]\nenabled = true\nupdated_at = 1\nupdated_by = \"phone\"\n");
+    let mut seed =
+        String::from("[apps.\"seed\"]\nenabled = true\nupdated_at = 1\nupdated_by = \"phone\"\n");
     for j in 0..FILLERS {
         seed.push_str(&format!(
             "[apps.\"filler.{j}\"]\nenabled = true\nupdated_at = 1\nupdated_by = \"phone\"\n"
@@ -483,9 +484,7 @@ async fn concurrent_set_config_and_hand_edits_lose_no_entries() {
             let entry = api
                 .iter()
                 .find(|e| e.package == package)
-                .unwrap_or_else(|| {
-                    panic!("{package} lost: unserialized writers dropped an entry")
-                });
+                .unwrap_or_else(|| panic!("{package} lost: unserialized writers dropped an entry"));
             assert_eq!(
                 entry.updated_by, "phone",
                 "{package} provenance must survive watcher reloads"
@@ -504,7 +503,10 @@ async fn concurrent_set_config_and_hand_edits_lose_no_entries() {
     );
     for (package, entry) in &disk.entries {
         let api_entry = &api_map[package];
-        assert_eq!(entry.enabled, api_entry.enabled, "{package}: enabled mismatch");
+        assert_eq!(
+            entry.enabled, api_entry.enabled,
+            "{package}: enabled mismatch"
+        );
         assert_eq!(
             entry.updated_at, api_entry.updated_at,
             "{package}: updated_at mismatch"
