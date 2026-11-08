@@ -1,14 +1,16 @@
 use std::path::Path;
 
 use mblink_proto::mblink::link::v1::StatusRequest;
+use tokio::time::timeout;
 
-use crate::connect_or_exit;
+use crate::{connect_or_exit, CLI_TIMEOUT};
 
 pub async fn run(socket: &Path) {
     let mut client = connect_or_exit(socket).await;
-    let resp = match client.status(StatusRequest {}).await {
-        Ok(r) => r.into_inner(),
-        Err(e) => crate::rpc_error_or_not_running(socket, e),
+    let resp = match timeout(CLI_TIMEOUT, client.status(StatusRequest {})).await {
+        Ok(Ok(r)) => r.into_inner(),
+        Ok(Err(e)) => crate::rpc_error_or_not_running(socket, e),
+        Err(_) => crate::timed_out(socket),
     };
 
     println!("version:   {}", resp.version);

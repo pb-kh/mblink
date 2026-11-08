@@ -1,9 +1,10 @@
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use mblink_core::config::ConfigStore;
 use mblink_core::control::{serve_uds, DaemonState, ModuleDescriptor};
+use tokio::net::UnixListener;
 
 fn mblink_bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_mblink"))
@@ -136,5 +137,61 @@ async fn cli_status_modules_config_and_unreachable_daemon() {
     assert!(
         stderr.contains(&format!("mblinkd not running ({})", socket.display())),
         "stderr missing exact error, got: {stderr}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_exits_with_clear_error_when_daemon_accepts_but_never_answers() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket = dir.path().join("mblink.sock");
+
+    let listener = UnixListener::bind(&socket).unwrap();
+    let acceptor = tokio::spawn(async move {
+        // Accept and hold connections without speaking HTTP/2.
+        let mut held = Vec::new();
+        loop {
+            match listener.accept().await {
+                Ok((stream, _)) => held.push(stream),
+                Err(_) => break,
+            }
+        }
+    });
+
+    let socket_arg = socket.to_str().unwrap().to_string();
+    let start = Instant::now();
+    let result = tokio::time::timeout(Duration::from_secs(10), async move {
+        tokio::task::spawn_blocking(move || {
+            mblink_bin()
+                .args(["--socket", &socket_arg, "status"])
+                .stdin(Stdio::null())
+                .output()
+                .unwrap()
+        })
+        .await
+        .unwrap()
+    })
+    .await;
+
+    acceptor.abort();
+    let _ = acceptor.await;
+
+    let out = result.expect("cli should exit within bounded time on a hung socket");
+    let elapsed = start.elapsed();
+    assert!(
+        elapsed < Duration::from_secs(9),
+        "cli took too long ({elapsed:?}), expected bounded timeout"
+    );
+    assert!(
+        !out.status.success(),
+        "cli should fail on a hung socket"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains(socket.to_str().unwrap()),
+        "stderr should name the socket, got: {stderr}"
+    );
+    assert!(
+        stderr.contains("timed out") || stderr.contains("not running"),
+        "stderr should give a clear error, got: {stderr}"
     );
 }

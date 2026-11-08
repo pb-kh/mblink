@@ -1,19 +1,24 @@
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use mblink_proto::mblink::link::v1::{
-    ConfigEntry, GetConfigRequest, SetConfigRequest,
-};
+use mblink_proto::mblink::link::v1::{ConfigEntry, GetConfigRequest, SetConfigRequest};
+use tokio::time::timeout;
 
-use crate::connect_or_exit;
+use crate::{connect_or_exit, CLI_TIMEOUT};
 
 pub async fn get(socket: &Path, module: &str) {
     let mut client = connect_or_exit(socket).await;
-    let resp = match client.get_config(GetConfigRequest {
-        module: module.to_string(),
-    }).await {
-        Ok(r) => r.into_inner(),
-        Err(e) => crate::rpc_error_or_not_running(socket, e),
+    let resp = match timeout(
+        CLI_TIMEOUT,
+        client.get_config(GetConfigRequest {
+            module: module.to_string(),
+        }),
+    )
+    .await
+    {
+        Ok(Ok(r)) => r.into_inner(),
+        Ok(Err(e)) => crate::rpc_error_or_not_running(socket, e),
+        Err(_) => crate::timed_out(socket),
     };
 
     let entries = resp.map.map(|m| m.entries).unwrap_or_default();
@@ -27,8 +32,9 @@ pub async fn set(socket: &Path, module: &str, package: &str, enabled: bool) {
         .unwrap_or_default()
         .as_millis() as u64;
 
-    let resp = match client
-        .set_config(SetConfigRequest {
+    let resp = match timeout(
+        CLI_TIMEOUT,
+        client.set_config(SetConfigRequest {
             module: module.to_string(),
             updates: vec![ConfigEntry {
                 package: package.to_string(),
@@ -36,11 +42,13 @@ pub async fn set(socket: &Path, module: &str, package: &str, enabled: bool) {
                 updated_at: now_ms,
                 updated_by: "linux".to_string(),
             }],
-        })
-        .await
+        }),
+    )
+    .await
     {
-        Ok(r) => r.into_inner(),
-        Err(e) => crate::rpc_error_or_not_running(socket, e),
+        Ok(Ok(r)) => r.into_inner(),
+        Ok(Err(e)) => crate::rpc_error_or_not_running(socket, e),
+        Err(_) => crate::timed_out(socket),
     };
 
     let entries = resp

@@ -2,12 +2,16 @@ mod commands;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::time::Duration;
 
 use clap::{Parser, Subcommand};
 use mblink_core::control::connect_uds;
 use mblink_core::dirs::MblinkDirs;
 use mblink_proto::mblink::link::v1::control_client::ControlClient;
+use tokio::time::timeout;
 use tonic::transport::Channel;
+
+pub(crate) const CLI_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Parser)]
 #[command(name = "mblink")]
@@ -105,10 +109,16 @@ fn parse_state(s: &str) -> Option<bool> {
 }
 
 pub(crate) async fn connect_or_exit(socket: &Path) -> ControlClient<Channel> {
-    match connect_uds(socket.to_path_buf()).await {
-        Ok(client) => client,
-        Err(_) => not_running(socket),
+    match timeout(CLI_TIMEOUT, connect_uds(socket.to_path_buf())).await {
+        Ok(Ok(client)) => client,
+        Ok(Err(_)) => not_running(socket),
+        Err(_) => timed_out(socket),
     }
+}
+
+pub(crate) fn timed_out(socket: &Path) -> ! {
+    eprintln!("mblinkd timed out ({})", socket.display());
+    std::process::exit(1);
 }
 
 pub(crate) fn rpc_error_or_not_running(socket: &Path, e: tonic::Status) -> ! {
