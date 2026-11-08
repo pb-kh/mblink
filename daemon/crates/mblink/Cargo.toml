@@ -2,3 +2,13 @@
 name = "mblink"
 version.workspace = true
 edition.workspace = true
+
+[dependencies]
+clap = { workspace = true }
+mblink-core = { path = "../mblink-core" }
+mblink-proto = { path = "../mblink-proto" }
+tokio = { workspace = true }
+tonic = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
