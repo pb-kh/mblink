@@ -177,3 +177,110 @@ async fn control_uds_roundtrip() {
     server_handle.abort();
     let _ = server_handle.await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_set_config_serializes_lww() {
+    use std::collections::HashMap;
+
+    let config_root = tempfile::tempdir().unwrap();
+    let socket_dir = tempfile::tempdir().unwrap();
+    let socket_path = socket_dir.path().join("concurrent.sock");
+
+    let state = Arc::new(DaemonState::new(
+        vec![ModuleDescriptor {
+            name: "notisync".to_string(),
+            status_line: "stub".to_string(),
+        }],
+        ConfigStore::new(config_root.path()),
+    ));
+
+    let server_state = Arc::clone(&state);
+    let server_path = socket_path.clone();
+    let server_handle = tokio::spawn(async move { serve_uds(server_state, server_path).await });
+
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+    while !socket_path.exists() {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        assert!(tokio::time::Instant::now() < deadline, "server did not start");
+    }
+
+    let mut client = connect_uds(socket_path.clone()).await.unwrap();
+
+    // Race many concurrent SetConfig calls against the same module.
+    let mut handles = Vec::new();
+    for i in 0..100 {
+        let mut c = connect_uds(socket_path.clone()).await.unwrap();
+        handles.push(tokio::spawn(async move {
+            c.set_config(SetConfigRequest {
+                module: "notisync".to_string(),
+                updates: vec![ConfigEntry {
+                    package: format!("pkg{}", i),
+                    enabled: i % 2 == 0,
+                    updated_at: 100 + i as u64,
+                    updated_by: "linux".to_string(),
+                }],
+            })
+            .await
+            .unwrap()
+            .into_inner()
+        }));
+    }
+
+    // Race updates to a shared package with out-of-order timestamps.
+    for (updated_at, enabled) in [(30, false), (300, true), (20, false), (200, false)] {
+        let mut c = connect_uds(socket_path.clone()).await.unwrap();
+        handles.push(tokio::spawn(async move {
+            c.set_config(SetConfigRequest {
+                module: "notisync".to_string(),
+                updates: vec![ConfigEntry {
+                    package: "racer".to_string(),
+                    enabled,
+                    updated_at,
+                    updated_by: "linux".to_string(),
+                }],
+            })
+            .await
+            .unwrap()
+            .into_inner()
+        }));
+    }
+
+    for h in handles {
+        let _ = h.await.unwrap();
+    }
+
+    let final_cfg = client
+        .get_config(GetConfigRequest {
+            module: "notisync".to_string(),
+        })
+        .await
+        .unwrap()
+        .into_inner();
+    let entries: HashMap<_, _> = final_cfg
+        .map
+        .unwrap()
+        .entries
+        .into_iter()
+        .map(|e| (e.package.clone(), e))
+        .collect();
+
+    // No lost updates: every distinct package is present.
+    for i in 0..100 {
+        assert!(entries.contains_key(&format!("pkg{}", i)), "missing pkg{}", i);
+    }
+
+    // LWW is respected for the racing package.
+    let racer = entries.get("racer").expect("racer missing");
+    assert!(racer.enabled, "racer should reflect newest update (enabled=true)");
+    assert_eq!(racer.updated_at, 300);
+
+    // On-disk state matches the API state.
+    let disk = std::fs::read_to_string(config_root.path().join("notisync").join("config.toml"))
+        .unwrap();
+    assert!(disk.contains("[apps.racer]"));
+    assert!(disk.contains("enabled = true"));
+    assert!(disk.contains("updated_at = 300"));
+
+    server_handle.abort();
+    let _ = server_handle.await;
+}

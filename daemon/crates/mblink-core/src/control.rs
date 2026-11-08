@@ -125,11 +125,17 @@ pub async fn connect_uds(
 
 pub struct ControlService {
     state: Arc<DaemonState>,
+    /// Serializes load → merge → save for SetConfig so concurrent RPCs cannot
+    /// overwrite each other and violate LWW.
+    set_config_lock: tokio::sync::Mutex<()>,
 }
 
 impl ControlService {
     pub fn new(state: Arc<DaemonState>) -> Self {
-        Self { state }
+        Self {
+            state,
+            set_config_lock: tokio::sync::Mutex::new(()),
+        }
     }
 }
 
@@ -181,6 +187,10 @@ impl ControlTrait for ControlService {
     ) -> Result<Response<SetConfigResponse>, Status> {
         let request = request.into_inner();
         validate_module(&request.module)?;
+
+        // Hold the lock across the entire load → merge → save critical section
+        // so concurrent SetConfig RPCs see each other's writes.
+        let _guard = self.set_config_lock.lock().await;
 
         let mut map = self
             .state
